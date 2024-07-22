@@ -1,0 +1,110 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+import pyautogui
+import time
+from openpyxl import load_workbook
+from openpyxl import Workbook
+import tkinter as tk
+from tkinter import messagebox
+
+driver = webdriver.Edge(executable_path = r'C:\Users\trevor.shaw\Desktop\Dibbs\edgedriver_win64\msedgedriver.exe')
+
+def page():
+    # Handle Login
+    driver.get('https://www.dibbs.bsm.dla.mil/ra/LogIn.aspx')
+    driver.find_element(By.NAME, 'butAgree').click()
+    driver.find_element(By.NAME, 'ctl00$cph1$wizLogOn$txtUserID').click()
+
+    # Username and Password
+    # Turn into a separate file, can store in separate file on S://
+    pyautogui.write('4K0V207')
+    driver.find_element(By.NAME, 'ctl00$cph1$wizLogOn$txtPassword').click()
+    pyautogui.write('Vxh17qNX73=nwF3')
+
+    
+    pyautogui.press('tab')
+    pyautogui.press('enter')
+    #RFQ tab
+    driver.find_element(By.LINK_TEXT, 'RFQs').click()
+
+
+def input_fields(cage_code):
+    #Approved Cage and type Cage
+    driver.find_element(By.NAME, 'ctl00$cph1$ddlCategory').click()
+    pyautogui.press('down')
+    pyautogui.press('down')
+    pyautogui.press('down')
+    pyautogui.press('down')
+    pyautogui.press('down')
+    pyautogui.press('enter')
+    pyautogui.press('tab')
+    
+    pyautogui.write(""+str(cage_code))
+    #Scope DropDown
+    driver.find_element(By.NAME, 'ctl00$cph1$ddlScope').click()
+    # 3 down, enter
+    pyautogui.press('down')
+    pyautogui.press('down')
+    pyautogui.press('down')
+    pyautogui.press('enter')
+    #Search
+    driver.find_element(By.NAME, 'ctl00$cph1$butDbGo').click()
+
+
+wb = Workbook()
+ws = wb.active
+
+def page_upload():
+    #Copy Table and put in excel
+    table = driver.find_element(By.XPATH, "//table[@id='ctl00_cph1_grdRfqSearch']").text
+    row = driver.find_elements(By.XPATH, "//tbody/tr")
+    for tr in row[2:]:
+        tds = tr.find_elements(By.TAG_NAME, "td")
+        if not tds:
+            continue
+        td_texts = [td.text for td in tds]
+        ws.append(td_texts)
+
+
+#Navigate pages
+def page_search():
+    page_number = 1
+    page_upload()
+    while page_number <= 100:
+        try:
+            driver.find_element(By.LINK_TEXT, str(page_number + 1)).click()
+            page_upload()
+            page_number += 1
+        except NoSuchElementException:
+            break
+        
+def entry_made():
+    cage_code = entry.get()
+    root.destroy()
+    page()
+    input_fields(cage_code)
+    driver.back()
+    input_fields(cage_code)
+    page_search()
+    wb.save("output" + str(cage_code) + ".xlsx")
+    print('done')
+
+#TK ------
+root = tk.Tk()
+root.title("DIBBS SCRAPE")
+
+
+label = tk.Label(root, text="Enter the Cage Code:")
+label.pack(pady=10)
+
+entry = tk.Entry(root)
+entry.pack(pady=10)
+
+start_button = tk.Button(root, text="Start",command=entry_made)
+start_button.pack(pady=10)
+
+root.mainloop()
+
